@@ -1,0 +1,22 @@
+# Binaries
+/bin/
+/dist/
+*.exe
+*.test
+*.out
+cover.out
+coverage.html
+
+# Local env
+.env
+.env.local
+
+# Editor / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Temp
+.tmp/
+tmp/
