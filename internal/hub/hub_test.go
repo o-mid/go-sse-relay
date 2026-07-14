@@ -14,13 +14,16 @@ func TestPublishFansOutToSubscribers(t *testing.T) {
 	defer h.Unsubscribe(a)
 	defer h.Unsubscribe(b)
 
-	n := h.Publish(hub.Event{
+	published, n := h.Publish(hub.Event{
 		Channel: "user_1",
 		Type:    "payment.updated",
 		Data:    []byte(`{"status":"settled"}`),
 	})
 	if n != 2 {
 		t.Fatalf("delivered=%d want 2", n)
+	}
+	if published.ID == "" {
+		t.Fatal("expected event id")
 	}
 
 	for _, sub := range []*hub.Subscriber{a, b} {
@@ -32,8 +35,8 @@ func TestPublishFansOutToSubscribers(t *testing.T) {
 			if ev.Type != "payment.updated" {
 				t.Fatalf("type=%q", ev.Type)
 			}
-			if ev.ID == "" {
-				t.Fatal("expected event id")
+			if ev.ID != published.ID {
+				t.Fatalf("id=%q want %q", ev.ID, published.ID)
 			}
 		case <-time.After(time.Second):
 			t.Fatal("timeout waiting for event")
@@ -46,7 +49,7 @@ func TestPublishIgnoresOtherChannels(t *testing.T) {
 	sub := h.Subscribe("user_a", 1)
 	defer h.Unsubscribe(sub)
 
-	n := h.Publish(hub.Event{Channel: "user_b", Type: "x", Data: []byte(`{}`)})
+	_, n := h.Publish(hub.Event{Channel: "user_b", Type: "x", Data: []byte(`{}`)})
 	if n != 0 {
 		t.Fatalf("delivered=%d want 0", n)
 	}
@@ -61,11 +64,12 @@ func TestSlowSubscriberDoesNotBlock(t *testing.T) {
 	defer h.Unsubscribe(sub)
 
 	// Fill the buffer.
-	_ = h.Publish(hub.Event{Channel: "ch", Type: "one", Data: []byte(`1`)})
+	_, _ = h.Publish(hub.Event{Channel: "ch", Type: "one", Data: []byte(`1`)})
 	// Second publish should drop for this sub, not block.
 	done := make(chan int, 1)
 	go func() {
-		done <- h.Publish(hub.Event{Channel: "ch", Type: "two", Data: []byte(`2`)})
+		_, n := h.Publish(hub.Event{Channel: "ch", Type: "two", Data: []byte(`2`)})
+		done <- n
 	}()
 	select {
 	case n := <-done:

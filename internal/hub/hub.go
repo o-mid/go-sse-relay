@@ -75,7 +75,8 @@ func (h *Hub) Unsubscribe(sub *Subscriber) {
 
 // Publish delivers an event to all subscribers on its channel.
 // Slow subscribers that fill their buffer drop the event (non-blocking send).
-func (h *Hub) Publish(ev Event) int {
+// The returned event includes the assigned ID.
+func (h *Hub) Publish(ev Event) (Event, int) {
 	if ev.ID == "" {
 		ev.ID = h.nextID()
 	}
@@ -91,7 +92,7 @@ func (h *Hub) Publish(ev Event) int {
 			// Drop when the subscriber is not keeping up.
 		}
 	}
-	return delivered
+	return ev, delivered
 }
 
 // SubscriberCount returns live subscribers for a channel.
