@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>go-sse-relay demo</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f3efe6;
+        --ink: #1c1a16;
+        --line: #d7d0c3;
+        --accent: #0f6a5a;
+        --card: #fffdf8;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: "Iowan Old Style", "Palatino Linotype", Palatino, serif;
+        background:
+          radial-gradient(circle at top left, #fff8e8, transparent 40%),
+          linear-gradient(180deg, #f7f2e8, var(--bg));
+        color: var(--ink);
+        min-height: 100vh;
+      }
+      main {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 2.5rem 1.25rem 4rem;
+      }
+      h1 {
+        font-size: clamp(2rem, 4vw, 2.8rem);
+        margin: 0 0 0.4rem;
+        letter-spacing: -0.03em;
+      }
+      p.lead { margin: 0 0 1.5rem; opacity: 0.8; }
+      .row { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem; }
+      input, button {
+        font: inherit;
+        padding: 0.7rem 0.9rem;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--card);
+      }
+      input { flex: 1; min-width: 180px; }
+      button {
+        background: var(--accent);
+        color: white;
+        border-color: var(--accent);
+        cursor: pointer;
+      }
+      button.secondary {
+        background: var(--card);
+        color: var(--ink);
+      }
+      #log {
+        border: 1px solid var(--line);
+        background: var(--card);
+        border-radius: 14px;
+        padding: 1rem;
+        min-height: 280px;
+        white-space: pre-wrap;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.92rem;
+        line-height: 1.45;
+      }
+      .status { margin: 0.5rem 0 1rem; font-size: 0.95rem; opacity: 0.75; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>go-sse-relay</h1>
+      <p class="lead">Connect a channel, publish a sample event, and watch it arrive over SSE.</p>
+      <div class="row">
+        <input id="channel" value="demo_user" aria-label="channel" />
+        <button id="connect" type="button">Connect stream</button>
+        <button id="publish" class="secondary" type="button">Publish sample event</button>
+      </div>
+      <p class="status" id="status">Disconnected</p>
+      <div id="log"></div>
+    </main>
+    <script>
+      const logEl = document.getElementById("log");
+      const statusEl = document.getElementById("status");
+      const channelEl = document.getElementById("channel");
+      let source;
+
+      function log(line) {
+        logEl.textContent += line + "\n";
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+
+      document.getElementById("connect").onclick = () => {
+        if (source) source.close();
+        const channel = encodeURIComponent(channelEl.value.trim() || "demo_user");
+        source = new EventSource("/v1/stream?channel=" + channel);
+        statusEl.textContent = "Connecting " + channelEl.value.trim();
+        source.onopen = () => {
+          statusEl.textContent = "Streaming " + channelEl.value.trim();
+          log("connected");
+        };
+        source.onerror = () => {
+          statusEl.textContent = "Stream error / reconnecting";
+        };
+        source.addEventListener("payment.updated", (ev) => {
+          log("payment.updated #" + ev.lastEventId + " " + ev.data);
+        });
+        source.onmessage = (ev) => {
+          log("message #" + ev.lastEventId + " " + ev.data);
+        };
+      };
+
+      document.getElementById("publish").onclick = async () => {
+        const channel = encodeURIComponent(channelEl.value.trim() || "demo_user");
+        const body = {
+          type: "payment.updated",
+          data: {
+            status: "settled",
+            amount: "42.00",
+            at: new Date().toISOString(),
+          },
+        };
+        const res = await fetch("/v1/hooks/" + channel, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const text = await res.text();
+        log("publish " + res.status + " " + text);
+      };
+    </script>
+  </body>
+</html>
