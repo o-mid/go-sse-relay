@@ -1,13 +1,17 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"io"
+	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/o-mid/go-sse-relay/internal/auth"
 	"github.com/o-mid/go-sse-relay/internal/buffer"
+	"github.com/o-mid/go-sse-relay/internal/bus"
 	"github.com/o-mid/go-sse-relay/internal/channel"
 	"github.com/o-mid/go-sse-relay/internal/hub"
 )
@@ -19,9 +23,11 @@ type hookEnvelope struct {
 
 // HookHandler accepts partner-style POST events and fans them out.
 type HookHandler struct {
-	Hub    *hub.Hub
-	Ring   *buffer.Ring
-	Secret string
+	Hub        *hub.Hub
+	Ring       *buffer.Ring
+	Bus        bus.Bus
+	Secret     string
+	InstanceID string
 }
 
 func (h *HookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -66,8 +72,17 @@ func (h *HookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Channel: ch,
 		Type:    env.Type,
 		Data:    append([]byte(nil), data...),
+		Origin:  h.InstanceID,
 	})
 	h.Ring.Add(published)
+
+	if h.Bus != nil {
+		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+		defer cancel()
+		if err := h.Bus.Publish(ctx, published); err != nil {
+			log.Printf("bus publish: %v", err)
+		}
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusAccepted)
