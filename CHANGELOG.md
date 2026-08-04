@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Signed stream tokens (`STREAM_SECRET`, `POST /v1/tokens`)
+- Multi-instance fan-out over Redis or NATS (`BUS=redis|nats`)
+- `INSTANCE_ID` echo suppression on the bus
+- `/healthz` reports bus name and whether stream auth is enabled
+- Docs: `docs/auth.md`, `docs/bus.md`
+
 ## v0.1.0 — 2026-08-08
 
 First public release.

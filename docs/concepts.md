@@ -59,8 +59,15 @@ When `HOOK_SECRET` is set, ingest requires a hex SHA-256 HMAC of the raw body in
 
 Streams are not authenticated in v0.1. Put the relay behind your own edge auth if channels are sensitive.
 
+## Stream tokens
+
+When `STREAM_SECRET` is set, subscribers must present a signed channel token. See [auth.md](auth.md).
+
+## Multi-instance
+
+`BUS=redis` or `BUS=nats` copies live events to other relay processes. Replay stays local. See [bus.md](bus.md).
+
 ## What this is not
 
-- not a message bus for many nodes (no Redis / Kafka bridge yet)
-- not a durable log
+- not a durable shared event log
 - not a full webhook platform with retries and delivery receipts
