@@ -2,16 +2,16 @@
 
 build:
 	mkdir -p bin
-	go build -o bin/relay ./cmd/relay
+	go build -mod=vendor -o bin/relay ./cmd/relay
 
 run:
-	go run ./cmd/relay
+	go run -mod=vendor ./cmd/relay
 
 test:
-	go test ./... -count=1
+	go test -mod=vendor ./... -count=1
 
 vet:
-	go vet ./...
+	go vet -mod=vendor ./...
 
 demo:
 	./scripts/demo.sh
