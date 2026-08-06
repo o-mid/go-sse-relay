@@ -31,10 +31,12 @@ curl -s -X POST 'http://127.0.0.1:8080/v1/hooks/demo_user' \
 ## Install
 
 ```bash
-go run github.com/o-mid/go-sse-relay/cmd/relay@v0.1.0
+go run github.com/o-mid/go-sse-relay/cmd/relay@v0.2.0
 ```
 
-For the stream-auth + bus work, run from this branch / a newer tag once released.
+```bash
+go install github.com/o-mid/go-sse-relay/cmd/relay@v0.2.0
+```
 
 ## Stream auth
 
