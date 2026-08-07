@@ -34,7 +34,7 @@ func FromEnv() Config {
 		mint = streamSecret
 	}
 	return Config{
-		ListenAddr:      getenv("LISTEN_ADDR", "127.0.0.1:8080"),
+		ListenAddr:      resolveListenAddr(),
 		HookSecret:      hook,
 		StreamSecret:    streamSecret,
 		TokenMintSecret: mint,
@@ -46,6 +46,17 @@ func FromEnv() Config {
 		SubscriberBuf:   getenvInt("SUBSCRIBER_BUFFER", 16),
 		DefaultTokenTTL: getenvInt("TOKEN_TTL_SECONDS", 3600),
 	}
+}
+
+// resolveListenAddr prefers LISTEN_ADDR, then Railway/Render-style PORT, then local default.
+func resolveListenAddr() string {
+	if v := strings.TrimSpace(os.Getenv("LISTEN_ADDR")); v != "" {
+		return v
+	}
+	if port := strings.TrimSpace(os.Getenv("PORT")); port != "" {
+		return "0.0.0.0:" + port
+	}
+	return "127.0.0.1:8080"
 }
 
 func getenv(key, fallback string) string {
