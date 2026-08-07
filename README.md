@@ -6,6 +6,19 @@ Push an event in. Stream it out live.
 
 Repo: https://github.com/o-mid/go-sse-relay
 
+## Live demo
+
+**https://go-sse-relay-production.up.railway.app**
+
+Open the page, click **Connect stream**, then **Publish sample event**.
+
+```bash
+curl -N 'https://go-sse-relay-production.up.railway.app/v1/stream?channel=demo_user'
+curl -s -X POST 'https://go-sse-relay-production.up.railway.app/v1/hooks/demo_user' \
+  -H 'Content-Type: application/json' \
+  -d '{"type":"payment.updated","data":{"status":"settled"}}'
+```
+
 ## Quick start
 
 ```bash
