@@ -16,12 +16,14 @@ import (
 
 	"github.com/o-mid/go-sse-relay/internal/api"
 	"github.com/o-mid/go-sse-relay/internal/buffer"
+	"github.com/o-mid/go-sse-relay/internal/bus"
 	"github.com/o-mid/go-sse-relay/internal/config"
 	"github.com/o-mid/go-sse-relay/internal/hub"
+	"github.com/o-mid/go-sse-relay/internal/streamtoken"
 )
 
 func TestHealthz(t *testing.T) {
-	mux := newTestMux("")
+	mux := newTestMux(config.Config{})
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/healthz", nil))
 	if rec.Code != http.StatusOK {
@@ -30,7 +32,7 @@ func TestHealthz(t *testing.T) {
 }
 
 func TestHookRejectsBadChannel(t *testing.T) {
-	mux := newTestMux("")
+	mux := newTestMux(config.Config{})
 	body := []byte(`{"type":"x","data":{}}`)
 	req := httptest.NewRequest(http.MethodPost, "/v1/hooks/bad%20name", bytes.NewReader(body))
 	rec := httptest.NewRecorder()
@@ -41,7 +43,7 @@ func TestHookRejectsBadChannel(t *testing.T) {
 }
 
 func TestHookRequiresValidSignatureWhenSecretSet(t *testing.T) {
-	mux := newTestMux("topsecret")
+	mux := newTestMux(config.Config{HookSecret: "topsecret"})
 	body := []byte(`{"type":"payment.updated","data":{"status":"settled"}}`)
 	req := httptest.NewRequest(http.MethodPost, "/v1/hooks/user_1", bytes.NewReader(body))
 	rec := httptest.NewRecorder()
@@ -62,11 +64,58 @@ func TestHookRequiresValidSignatureWhenSecretSet(t *testing.T) {
 	}
 }
 
+func TestStreamRequiresTokenWhenConfigured(t *testing.T) {
+	mux := newTestMux(config.Config{StreamSecret: "stream-secret", SubscriberBuf: 4, ReplayCapacity: 8})
+	req := httptest.NewRequest(http.MethodGet, "/v1/stream?channel=demo_user", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status=%d want 401", rec.Code)
+	}
+
+	tok, err := streamtoken.Mint("stream-secret", "demo_user", time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+	req = httptest.NewRequestWithContext(ctx, http.MethodGet, "/v1/stream?channel=demo_user&token="+tok.Raw, nil)
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestMintToken(t *testing.T) {
+	mux := newTestMux(config.Config{
+		StreamSecret:    "stream-secret",
+		TokenMintSecret: "mint-secret",
+		DefaultTokenTTL: 3600,
+	})
+	body := []byte(`{"channel":"demo_user","ttl_seconds":120}`)
+	req := httptest.NewRequest(http.MethodPost, "/v1/tokens", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer mint-secret")
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	var out map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+		t.Fatal(err)
+	}
+	token, _ := out["token"].(string)
+	if err := streamtoken.Verify("stream-secret", token, "demo_user", time.Now().UTC()); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestStreamReceivesPublishedEvent(t *testing.T) {
-	cfg := config.Config{SubscriberBuf: 4, ReplayCapacity: 8}
+	cfg := config.Config{SubscriberBuf: 4, ReplayCapacity: 8, InstanceID: "t1"}
 	h := hub.New()
 	ring := buffer.New(cfg.ReplayCapacity)
-	mux := api.NewMux(cfg, h, ring)
+	mux := api.NewMux(cfg, h, ring, bus.NewMemory())
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -115,7 +164,7 @@ func TestReplayUsesLastEventID(t *testing.T) {
 	cfg := config.Config{SubscriberBuf: 4, ReplayCapacity: 8}
 	h := hub.New()
 	ring := buffer.New(cfg.ReplayCapacity)
-	mux := api.NewMux(cfg, h, ring)
+	mux := api.NewMux(cfg, h, ring, bus.NewMemory())
 
 	body := []byte(`{"type":"one","data":{"n":1}}`)
 	req := httptest.NewRequest(http.MethodPost, "/v1/hooks/replay", bytes.NewReader(body))
@@ -160,7 +209,18 @@ func TestReplayUsesLastEventID(t *testing.T) {
 	}
 }
 
-func newTestMux(secret string) http.Handler {
-	cfg := config.Config{HookSecret: secret, SubscriberBuf: 4, ReplayCapacity: 8}
-	return api.NewMux(cfg, hub.New(), buffer.New(cfg.ReplayCapacity))
+func newTestMux(cfg config.Config) http.Handler {
+	if cfg.SubscriberBuf == 0 {
+		cfg.SubscriberBuf = 4
+	}
+	if cfg.ReplayCapacity == 0 {
+		cfg.ReplayCapacity = 8
+	}
+	if cfg.InstanceID == "" {
+		cfg.InstanceID = "test"
+	}
+	if cfg.DefaultTokenTTL == 0 {
+		cfg.DefaultTokenTTL = 3600
+	}
+	return api.NewMux(cfg, hub.New(), buffer.New(cfg.ReplayCapacity), bus.NewMemory())
 }

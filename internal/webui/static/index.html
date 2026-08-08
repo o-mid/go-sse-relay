@@ -34,7 +34,7 @@
         letter-spacing: -0.03em;
       }
       p.lead { margin: 0 0 1.5rem; opacity: 0.8; }
-      .row { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem; }
+      .row { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
       input, button {
         font: inherit;
         padding: 0.7rem 0.9rem;
@@ -65,6 +65,7 @@
         line-height: 1.45;
       }
       .status { margin: 0.5rem 0 1rem; font-size: 0.95rem; opacity: 0.75; }
+      .hint { font-size: 0.9rem; opacity: 0.7; margin: 0 0 1rem; }
     </style>
   </head>
   <body>
@@ -76,6 +77,10 @@
         <button id="connect" type="button">Connect stream</button>
         <button id="publish" class="secondary" type="button">Publish sample event</button>
       </div>
+      <div class="row">
+        <input id="token" value="" placeholder="stream token (needed if STREAM_SECRET is set)" aria-label="token" />
+      </div>
+      <p class="hint" id="authHint">Checking auth…</p>
       <p class="status" id="status">Disconnected</p>
       <div id="log"></div>
     </main>
@@ -83,6 +88,8 @@
       const logEl = document.getElementById("log");
       const statusEl = document.getElementById("status");
       const channelEl = document.getElementById("channel");
+      const tokenEl = document.getElementById("token");
+      const authHint = document.getElementById("authHint");
       let source;
 
       function log(line) {
@@ -90,17 +97,33 @@
         logEl.scrollTop = logEl.scrollHeight;
       }
 
+      fetch("/healthz")
+        .then((r) => r.json())
+        .then((j) => {
+          if (j.stream_auth) {
+            authHint.textContent = "Stream auth is on. Paste a token from POST /v1/tokens, then connect.";
+          } else {
+            authHint.textContent = "Stream auth is off (dev mode). Token field is optional.";
+          }
+        })
+        .catch(() => {
+          authHint.textContent = "Could not read /healthz.";
+        });
+
       document.getElementById("connect").onclick = () => {
         if (source) source.close();
         const channel = encodeURIComponent(channelEl.value.trim() || "demo_user");
-        source = new EventSource("/v1/stream?channel=" + channel);
+        const token = tokenEl.value.trim();
+        let url = "/v1/stream?channel=" + channel;
+        if (token) url += "&token=" + encodeURIComponent(token);
+        source = new EventSource(url);
         statusEl.textContent = "Connecting " + channelEl.value.trim();
         source.onopen = () => {
           statusEl.textContent = "Streaming " + channelEl.value.trim();
           log("connected");
         };
         source.onerror = () => {
-          statusEl.textContent = "Stream error / reconnecting";
+          statusEl.textContent = "Stream error / reconnecting (401 means token missing or bad)";
         };
         source.addEventListener("payment.updated", (ev) => {
           log("payment.updated #" + ev.lastEventId + " " + ev.data);

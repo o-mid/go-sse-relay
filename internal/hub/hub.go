@@ -12,6 +12,8 @@ type Event struct {
 	Channel string
 	Type    string
 	Data    []byte
+	// Origin is the publishing instance id (used to ignore bus echoes).
+	Origin string
 }
 
 // Subscriber receives events for a single channel.

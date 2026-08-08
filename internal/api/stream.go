@@ -9,6 +9,7 @@ import (
 	"github.com/o-mid/go-sse-relay/internal/buffer"
 	"github.com/o-mid/go-sse-relay/internal/channel"
 	"github.com/o-mid/go-sse-relay/internal/hub"
+	"github.com/o-mid/go-sse-relay/internal/streamtoken"
 )
 
 // StreamHandler serves SSE for a channel, with optional Last-Event-ID replay.
@@ -16,6 +17,7 @@ type StreamHandler struct {
 	Hub           *hub.Hub
 	Ring          *buffer.Ring
 	SubscriberBuf int
+	StreamSecret  string
 }
 
 func (h *StreamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -28,6 +30,15 @@ func (h *StreamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid channel", http.StatusBadRequest)
 		return
 	}
+	token := strings.TrimSpace(r.URL.Query().Get("token"))
+	if token == "" {
+		token = strings.TrimSpace(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
+	}
+	if err := streamtoken.Verify(h.StreamSecret, token, ch, time.Now().UTC()); err != nil {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		http.Error(w, "streaming unsupported", http.StatusInternalServerError)
@@ -77,7 +88,6 @@ func (h *StreamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func writeSSE(w http.ResponseWriter, ev hub.Event) {
 	_, _ = fmt.Fprintf(w, "id: %s\n", sanitizeOneLine(ev.ID))
 	_, _ = fmt.Fprintf(w, "event: %s\n", sanitizeOneLine(ev.Type))
-	// One data line is enough for this relay; strip CR/LF from payloads.
 	_, _ = fmt.Fprintf(w, "data: %s\n\n", sanitizeOneLine(string(ev.Data)))
 }
 
