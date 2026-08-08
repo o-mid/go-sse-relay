@@ -12,6 +12,10 @@ Repo: https://github.com/o-mid/go-sse-relay
 
 Open the page, click **Connect stream**, then **Publish sample event**.
 
+![Demo UI idle](docs/screenshots/demo-idle.jpg)
+
+![Demo UI live event](docs/screenshots/demo-live.jpg)
+
 ```bash
 curl -N 'https://go-sse-relay-production.up.railway.app/v1/stream?channel=demo_user'
 curl -s -X POST 'https://go-sse-relay-production.up.railway.app/v1/hooks/demo_user' \
