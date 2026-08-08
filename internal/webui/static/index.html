@@ -3,138 +3,847 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>go-sse-relay demo</title>
+    <title>go-sse-relay — live demo</title>
     <style>
+      @font-face {
+        font-family: "Sora";
+        font-style: normal;
+        font-weight: 400;
+        font-display: swap;
+        src: url("./fonts/sora-latin-400-normal.woff2") format("woff2");
+      }
+      @font-face {
+        font-family: "Sora";
+        font-style: normal;
+        font-weight: 500;
+        font-display: swap;
+        src: url("./fonts/sora-latin-500-normal.woff2") format("woff2");
+      }
+      @font-face {
+        font-family: "Sora";
+        font-style: normal;
+        font-weight: 600;
+        font-display: swap;
+        src: url("./fonts/sora-latin-600-normal.woff2") format("woff2");
+      }
+      @font-face {
+        font-family: "Sora";
+        font-style: normal;
+        font-weight: 700;
+        font-display: swap;
+        src: url("./fonts/sora-latin-700-normal.woff2") format("woff2");
+      }
+      @font-face {
+        font-family: "JetBrains Mono";
+        font-style: normal;
+        font-weight: 400;
+        font-display: swap;
+        src: url("./fonts/jetbrains-mono-latin-400-normal.woff2") format("woff2");
+      }
+      @font-face {
+        font-family: "JetBrains Mono";
+        font-style: normal;
+        font-weight: 500;
+        font-display: swap;
+        src: url("./fonts/jetbrains-mono-latin-500-normal.woff2") format("woff2");
+      }
+
       :root {
         color-scheme: light;
-        --bg: #f3efe6;
-        --ink: #1c1a16;
-        --line: #d7d0c3;
-        --accent: #0f6a5a;
-        --card: #fffdf8;
+        --ink: #102018;
+        --muted: #4d6358;
+        --line: #c9d8cf;
+        --panel: rgba(255, 255, 255, 0.78);
+        --panel-solid: #f7fbf8;
+        --accent: #0d7a5f;
+        --accent-ink: #ffffff;
+        --accent-soft: #d8f3ea;
+        --warn: #9a5b00;
+        --warn-soft: #fff1d6;
+        --danger: #b42318;
+        --ok: #0b7a45;
+        --shadow: 0 18px 50px rgba(16, 32, 24, 0.08);
+        --radius: 18px;
+        --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+        --sans: "Sora", "Avenir Next", "Segoe UI", sans-serif;
       }
+
       * { box-sizing: border-box; }
+
       body {
         margin: 0;
-        font-family: "Iowan Old Style", "Palatino Linotype", Palatino, serif;
-        background:
-          radial-gradient(circle at top left, #fff8e8, transparent 40%),
-          linear-gradient(180deg, #f7f2e8, var(--bg));
-        color: var(--ink);
         min-height: 100vh;
+        font-family: var(--sans);
+        color: var(--ink);
+        background:
+          radial-gradient(900px 420px at 8% -10%, #c8f0df 0%, transparent 55%),
+          radial-gradient(700px 380px at 100% 0%, #dce9ff 0%, transparent 50%),
+          linear-gradient(180deg, #eef6f1 0%, #e7efe9 48%, #f4f7f5 100%);
       }
+
       main {
-        max-width: 720px;
+        width: min(920px, calc(100% - 2rem));
         margin: 0 auto;
-        padding: 2.5rem 1.25rem 4rem;
+        padding: 2.25rem 0 3.5rem;
       }
+
+      .hero {
+        margin-bottom: 1.5rem;
+        animation: rise 0.55s ease both;
+      }
+
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.55rem;
+        margin-bottom: 0.85rem;
+      }
+
+      .mark {
+        width: 2.1rem;
+        height: 2.1rem;
+        border-radius: 0.7rem;
+        background:
+          linear-gradient(145deg, #14a37e, #0d7a5f 55%, #0a5c49);
+        box-shadow: 0 8px 20px rgba(13, 122, 95, 0.28);
+        position: relative;
+      }
+
+      .mark::after {
+        content: "";
+        position: absolute;
+        inset: 0.55rem 0.45rem auto;
+        height: 0.22rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.9);
+        box-shadow:
+          0 0.35rem 0 rgba(255, 255, 255, 0.55),
+          0 0.7rem 0 rgba(255, 255, 255, 0.3);
+      }
+
       h1 {
-        font-size: clamp(2rem, 4vw, 2.8rem);
-        margin: 0 0 0.4rem;
-        letter-spacing: -0.03em;
+        margin: 0;
+        font-size: clamp(2.2rem, 5.2vw, 3.15rem);
+        font-weight: 700;
+        letter-spacing: -0.055em;
+        line-height: 1.02;
       }
-      p.lead { margin: 0 0 1.5rem; opacity: 0.8; }
-      .row { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
-      input, button {
-        font: inherit;
-        padding: 0.7rem 0.9rem;
+
+      .lead {
+        margin: 0.75rem 0 0;
+        max-width: 38rem;
+        color: var(--muted);
+        font-size: 1.06rem;
+        font-weight: 400;
+        line-height: 1.5;
+        letter-spacing: -0.01em;
+      }
+
+      .meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 1rem;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.35rem 0.7rem;
         border: 1px solid var(--line);
-        border-radius: 10px;
-        background: var(--card);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.65);
+        color: var(--muted);
+        font-size: 0.82rem;
+        font-family: var(--mono);
       }
-      input { flex: 1; min-width: 180px; }
-      button {
+
+      .pill strong {
+        color: var(--ink);
+        font-weight: 500;
+      }
+
+      .dot {
+        width: 0.55rem;
+        height: 0.55rem;
+        border-radius: 50%;
+        background: #9aa89f;
+      }
+
+      .dot.ok { background: var(--ok); box-shadow: 0 0 0 3px rgba(11, 122, 69, 0.15); }
+      .dot.warn { background: #d97706; }
+      .dot.bad { background: var(--danger); }
+
+      .layout {
+        display: grid;
+        gap: 1rem;
+        animation: rise 0.65s ease 0.08s both;
+      }
+
+      @media (min-width: 860px) {
+        .layout {
+          grid-template-columns: 1.05fr 0.95fr;
+          align-items: start;
+        }
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid rgba(201, 216, 207, 0.9);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(10px);
+        padding: 1.15rem 1.2rem 1.25rem;
+      }
+
+      .panel h2 {
+        margin: 0 0 0.35rem;
+        font-size: 1.05rem;
+        letter-spacing: -0.02em;
+      }
+
+      .panel .sub {
+        margin: 0 0 1rem;
+        color: var(--muted);
+        font-size: 0.92rem;
+        line-height: 1.4;
+      }
+
+      .steps {
+        list-style: none;
+        margin: 0 0 1.1rem;
+        padding: 0;
+        display: grid;
+        gap: 0.65rem;
+      }
+
+      .steps li {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 0.7rem;
+        align-items: start;
+        padding: 0.7rem 0.8rem;
+        border-radius: 14px;
+        border: 1px solid transparent;
+        background: rgba(255, 255, 255, 0.45);
+        transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+      }
+
+      .steps li.active {
+        border-color: #9fd9c4;
+        background: var(--accent-soft);
+        transform: translateY(-1px);
+      }
+
+      .steps li.done {
+        opacity: 0.88;
+      }
+
+      .n {
+        width: 1.55rem;
+        height: 1.55rem;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: var(--accent);
+        background: #fff;
+        border: 1px solid #b7dfd0;
+      }
+
+      .steps li.active .n {
         background: var(--accent);
         color: white;
         border-color: var(--accent);
-        cursor: pointer;
       }
-      button.secondary {
-        background: var(--card);
+
+      .steps strong {
+        display: block;
+        font-size: 0.95rem;
+        margin-bottom: 0.15rem;
+      }
+
+      .steps span {
+        color: var(--muted);
+        font-size: 0.86rem;
+        line-height: 1.35;
+      }
+
+      label {
+        display: block;
+        font-size: 0.82rem;
+        font-weight: 600;
+        margin: 0 0 0.35rem;
         color: var(--ink);
       }
-      #log {
+
+      .field { margin-bottom: 0.85rem; }
+
+      .hint {
+        margin: 0.35rem 0 0;
+        color: var(--muted);
+        font-size: 0.8rem;
+        line-height: 1.35;
+      }
+
+      .hint.warn {
+        color: var(--warn);
+        background: var(--warn-soft);
+        border: 1px solid #f0d59a;
+        border-radius: 10px;
+        padding: 0.55rem 0.7rem;
+      }
+
+      input {
+        width: 100%;
+        font: inherit;
+        padding: 0.75rem 0.85rem;
         border: 1px solid var(--line);
-        background: var(--card);
-        border-radius: 14px;
-        padding: 1rem;
-        min-height: 280px;
-        white-space: pre-wrap;
-        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        border-radius: 12px;
+        background: #fff;
+        color: var(--ink);
+        outline: none;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      }
+
+      input:focus {
+        border-color: #6bb89d;
+        box-shadow: 0 0 0 3px rgba(13, 122, 95, 0.15);
+      }
+
+      input:disabled {
+        background: #eef3f0;
+        color: #6b7c73;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.55rem;
+        margin-top: 0.25rem;
+      }
+
+      button {
+        font: inherit;
+        font-weight: 600;
+        border-radius: 12px;
+        border: 1px solid transparent;
+        padding: 0.72rem 0.95rem;
+        cursor: pointer;
+        transition: transform 0.12s ease, background 0.15s ease, opacity 0.15s ease;
+      }
+
+      button:hover:not(:disabled) { transform: translateY(-1px); }
+      button:active:not(:disabled) { transform: translateY(0); }
+      button:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      button.primary {
+        background: var(--accent);
+        color: var(--accent-ink);
+      }
+
+      button.secondary {
+        background: #fff;
+        color: var(--ink);
+        border-color: var(--line);
+      }
+
+      button.ghost {
+        background: transparent;
+        color: var(--muted);
+        border-color: transparent;
+      }
+
+      .status-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        margin-bottom: 0.75rem;
+      }
+
+      .status-left {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-width: 0;
+      }
+
+      #statusText {
         font-size: 0.92rem;
+        font-weight: 600;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      #statusDetail {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.8rem;
+      }
+
+      .log-wrap {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: #0f1a15;
+        color: #d7ebe2;
+        min-height: 320px;
+        max-height: 480px;
+        overflow: auto;
+        position: relative;
+      }
+
+      #log {
+        margin: 0;
+        padding: 0.95rem 1rem 1.1rem;
+        font-family: var(--mono);
+        font-size: 0.82rem;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+
+      .log-empty {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        padding: 1.5rem;
+        text-align: center;
+        color: #8eaea0;
+        font-family: var(--sans);
+        pointer-events: none;
+      }
+
+      .log-empty strong {
+        display: block;
+        color: #c5dfd4;
+        font-size: 1rem;
+        margin-bottom: 0.35rem;
+      }
+
+      .log-empty p {
+        margin: 0;
+        max-width: 18rem;
+        font-size: 0.88rem;
+        line-height: 1.4;
+      }
+
+      .log-wrap.has-lines .log-empty { display: none; }
+
+      .line-meta { color: #7f9f91; }
+      .line-ok { color: #7ddea8; }
+      .line-event { color: #9fd8ff; }
+      .line-err { color: #ff9b8a; }
+      .line-sys { color: #d2c28a; }
+
+      .help {
+        margin-top: 1rem;
+        animation: rise 0.7s ease 0.14s both;
+      }
+
+      details.help {
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: rgba(255, 255, 255, 0.55);
+        padding: 0.85rem 1rem;
+      }
+
+      details.help summary {
+        cursor: pointer;
+        font-weight: 600;
+        list-style: none;
+      }
+
+      details.help summary::-webkit-details-marker { display: none; }
+
+      details.help summary::after {
+        content: "Show";
+        float: right;
+        font-weight: 500;
+        color: var(--muted);
+        font-size: 0.85rem;
+      }
+
+      details.help[open] summary::after { content: "Hide"; }
+
+      .help-body {
+        margin-top: 0.85rem;
+        color: var(--muted);
+        font-size: 0.9rem;
         line-height: 1.45;
       }
-      .status { margin: 0.5rem 0 1rem; font-size: 0.95rem; opacity: 0.75; }
-      .hint { font-size: 0.9rem; opacity: 0.7; margin: 0 0 1rem; }
+
+      .help-body ol {
+        margin: 0.4rem 0 0.8rem 1.1rem;
+        padding: 0;
+      }
+
+      code {
+        font-family: var(--mono);
+        font-size: 0.84em;
+        background: rgba(13, 122, 95, 0.08);
+        padding: 0.08em 0.35em;
+        border-radius: 6px;
+      }
+
+      .help-body code,
+      .curl {
+        font-family: var(--mono);
+        font-size: 0.78rem;
+      }
+
+      .curl {
+        display: block;
+        margin: 0.45rem 0 0.8rem;
+        padding: 0.75rem 0.85rem;
+        border-radius: 12px;
+        background: var(--panel-solid);
+        border: 1px solid var(--line);
+        color: var(--ink);
+        white-space: pre-wrap;
+        overflow-x: auto;
+      }
+
+      @keyframes rise {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+          animation: none !important;
+          transition: none !important;
+        }
+      }
     </style>
   </head>
   <body>
     <main>
-      <h1>go-sse-relay</h1>
-      <p class="lead">Connect a channel, publish a sample event, and watch it arrive over SSE.</p>
-      <div class="row">
-        <input id="channel" value="demo_user" aria-label="channel" />
-        <button id="connect" type="button">Connect stream</button>
-        <button id="publish" class="secondary" type="button">Publish sample event</button>
+      <header class="hero">
+        <div class="brand" aria-hidden="true">
+          <span class="mark"></span>
+        </div>
+        <h1>go-sse-relay</h1>
+        <p class="lead">
+          Push an event in. Stream it out live. Connect a channel, publish a sample
+          event, and watch it arrive over Server-Sent Events.
+        </p>
+        <div class="meta" id="meta" aria-live="polite">
+          <span class="pill"><span class="dot" id="healthDot"></span> <strong id="healthLabel">Checking…</strong></span>
+          <span class="pill">bus <strong id="busLabel">—</strong></span>
+          <span class="pill">instance <strong id="instanceLabel">—</strong></span>
+          <span class="pill">stream auth <strong id="authLabel">—</strong></span>
+        </div>
+      </header>
+
+      <div class="layout">
+        <section class="panel" aria-labelledby="tryTitle">
+          <h2 id="tryTitle">Try it in 3 steps</h2>
+          <p class="sub">Stay on the same channel for connect and publish, or you will not see the event.</p>
+
+          <ol class="steps" id="steps">
+            <li class="active" data-step="1">
+              <span class="n">1</span>
+              <div>
+                <strong>Pick a channel</strong>
+                <span>Any short name works (letters, numbers, <code>_</code> / <code>-</code>). Default is fine.</span>
+              </div>
+            </li>
+            <li data-step="2">
+              <span class="n">2</span>
+              <div>
+                <strong>Connect the stream</strong>
+                <span>Opens a live SSE subscription. Status turns green when ready.</span>
+              </div>
+            </li>
+            <li data-step="3">
+              <span class="n">3</span>
+              <div>
+                <strong>Publish a sample event</strong>
+                <span>Sends <code>payment.updated</code> to that channel. It should appear in the log instantly.</span>
+              </div>
+            </li>
+          </ol>
+
+          <div class="field">
+            <label for="channel">Channel</label>
+            <input id="channel" value="demo_user" autocomplete="off" spellcheck="false" />
+            <p class="hint">Tip: use one channel name for both buttons (for example <code>demo_user</code>).</p>
+          </div>
+
+          <div class="field" id="tokenField">
+            <label for="token">Stream token <span id="tokenReq">(optional)</span></label>
+            <input id="token" value="" placeholder="Paste token if stream auth is on" autocomplete="off" spellcheck="false" />
+            <p class="hint" id="authHint">Checking whether this server requires a stream token…</p>
+          </div>
+
+          <div class="actions">
+            <button id="connect" class="primary" type="button">Connect stream</button>
+            <button id="disconnect" class="secondary" type="button" disabled>Disconnect</button>
+            <button id="publish" class="secondary" type="button">Publish sample event</button>
+          </div>
+          <p class="hint" id="publishHint" style="margin-top: 0.75rem">
+            You can publish before connecting, but you will only see live events after step 2.
+          </p>
+        </section>
+
+        <section class="panel" aria-labelledby="liveTitle">
+          <div class="status-bar">
+            <div class="status-left">
+              <span class="dot" id="streamDot"></span>
+              <div>
+                <div id="statusText">Disconnected</div>
+                <p id="statusDetail">Connect to start receiving events.</p>
+              </div>
+            </div>
+            <button id="clear" class="ghost" type="button">Clear log</button>
+          </div>
+
+          <div class="log-wrap" id="logWrap">
+            <div class="log-empty" id="logEmpty">
+              <div>
+                <strong>Waiting for activity</strong>
+                <p>Connect, then publish. Events, publish results, and errors show up here.</p>
+              </div>
+            </div>
+            <pre id="log" aria-live="polite"></pre>
+          </div>
+        </section>
       </div>
-      <div class="row">
-        <input id="token" value="" placeholder="stream token (needed if STREAM_SECRET is set)" aria-label="token" />
-      </div>
-      <p class="hint" id="authHint">Checking auth…</p>
-      <p class="status" id="status">Disconnected</p>
-      <div id="log"></div>
+
+      <details class="help">
+        <summary>Need a quick walkthrough or curl?</summary>
+        <div class="help-body">
+          <p><strong>Happy path</strong></p>
+          <ol>
+            <li>Leave the channel as <code>demo_user</code> (or type your own).</li>
+            <li>Click <strong>Connect stream</strong> and wait for “Streaming…”.</li>
+            <li>Click <strong>Publish sample event</strong> and watch the log.</li>
+          </ol>
+          <p>
+            If stream auth is on, mint a token first (server needs
+            <code>TOKEN_MINT_SECRET</code> / <code>STREAM_SECRET</code>), paste it above, then connect.
+          </p>
+          <p><strong>Equivalent curl</strong></p>
+          <code class="curl" id="curlStream">curl -N 'http://127.0.0.1:8080/v1/stream?channel=demo_user'</code>
+          <code class="curl" id="curlPublish">curl -s -X POST 'http://127.0.0.1:8080/v1/hooks/demo_user' \
+  -H 'Content-Type: application/json' \
+  -d '{"type":"payment.updated","data":{"status":"settled","amount":"42.00"}}'</code>
+        </div>
+      </details>
     </main>
+
     <script>
       const logEl = document.getElementById("log");
-      const statusEl = document.getElementById("status");
+      const logWrap = document.getElementById("logWrap");
+      const statusText = document.getElementById("statusText");
+      const statusDetail = document.getElementById("statusDetail");
+      const streamDot = document.getElementById("streamDot");
       const channelEl = document.getElementById("channel");
       const tokenEl = document.getElementById("token");
       const authHint = document.getElementById("authHint");
-      let source;
+      const tokenReq = document.getElementById("tokenReq");
+      const connectBtn = document.getElementById("connect");
+      const disconnectBtn = document.getElementById("disconnect");
+      const publishBtn = document.getElementById("publish");
+      const steps = Array.from(document.querySelectorAll("#steps li"));
 
-      function log(line) {
-        logEl.textContent += line + "\n";
-        logEl.scrollTop = logEl.scrollHeight;
+      let source = null;
+      let connected = false;
+      let sawEvent = false;
+      let streamAuth = false;
+
+      function stamp() {
+        return new Date().toLocaleTimeString([], { hour12: false });
+      }
+
+      function setStep(n) {
+        steps.forEach((el) => {
+          const step = Number(el.dataset.step);
+          el.classList.toggle("active", step === n);
+          el.classList.toggle("done", step < n);
+        });
+      }
+
+      function setStreamState(state, detail) {
+        streamDot.className = "dot";
+        if (state === "connected") {
+          streamDot.classList.add("ok");
+          statusText.textContent = "Streaming " + (channelEl.value.trim() || "demo_user");
+          statusDetail.textContent = detail || "Listening for events on this channel.";
+          connectBtn.textContent = "Reconnect";
+          disconnectBtn.disabled = false;
+          connected = true;
+          setStep(3);
+          if (sawEvent) steps[2].classList.add("done");
+        } else if (state === "connecting") {
+          streamDot.classList.add("warn");
+          statusText.textContent = "Connecting…";
+          statusDetail.textContent = detail || "Opening SSE stream.";
+          disconnectBtn.disabled = false;
+          connected = false;
+          setStep(2);
+        } else if (state === "error") {
+          streamDot.classList.add("bad");
+          statusText.textContent = "Stream error";
+          statusDetail.textContent = detail || "Check the token, channel, and server.";
+          connectBtn.textContent = "Connect stream";
+          disconnectBtn.disabled = !source;
+          connected = false;
+        } else {
+          statusText.textContent = "Disconnected";
+          statusDetail.textContent = detail || "Connect to start receiving events.";
+          connectBtn.textContent = "Connect stream";
+          disconnectBtn.disabled = true;
+          connected = false;
+          setStep(1);
+        }
+      }
+
+      function log(kind, line) {
+        const cls =
+          kind === "ok" ? "line-ok" :
+          kind === "event" ? "line-event" :
+          kind === "err" ? "line-err" :
+          kind === "sys" ? "line-sys" : "";
+        const row = document.createElement("div");
+        row.innerHTML =
+          '<span class="line-meta">[' + stamp() + "]</span> " +
+          (cls ? '<span class="' + cls + '">' : "<span>") +
+          escapeHtml(line) +
+          "</span>";
+        logEl.appendChild(row);
+        logWrap.classList.add("has-lines");
+        logWrap.scrollTop = logWrap.scrollHeight;
+      }
+
+      function escapeHtml(s) {
+        return String(s)
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;");
+      }
+
+      function channelValue() {
+        return channelEl.value.trim() || "demo_user";
+      }
+
+      function updateCurl() {
+        const ch = encodeURIComponent(channelValue());
+        const token = tokenEl.value.trim();
+        let stream = location.origin + "/v1/stream?channel=" + ch;
+        if (token) stream += "&token=" + encodeURIComponent(token);
+        document.getElementById("curlStream").textContent = "curl -N '" + stream + "'";
+        document.getElementById("curlPublish").textContent =
+          "curl -s -X POST '" + location.origin + "/v1/hooks/" + ch + "' \\\n" +
+          "  -H 'Content-Type: application/json' \\\n" +
+          "  -d '{\"type\":\"payment.updated\",\"data\":{\"status\":\"settled\",\"amount\":\"42.00\"}}'";
+      }
+
+      function closeSource() {
+        if (source) {
+          source.close();
+          source = null;
+        }
+      }
+
+      function attachEventListeners(es) {
+        es.addEventListener("payment.updated", (ev) => {
+          sawEvent = true;
+          setStep(3);
+          steps[2].classList.add("done");
+          log("event", "payment.updated #" + ev.lastEventId + " " + ev.data);
+        });
+        es.onmessage = (ev) => {
+          sawEvent = true;
+          log("event", "message #" + ev.lastEventId + " " + ev.data);
+        };
       }
 
       fetch("/healthz")
         .then((r) => r.json())
         .then((j) => {
-          if (j.stream_auth) {
-            authHint.textContent = "Stream auth is on. Paste a token from POST /v1/tokens, then connect.";
+          streamAuth = !!j.stream_auth;
+          document.getElementById("healthDot").className = "dot ok";
+          document.getElementById("healthLabel").textContent = "API healthy";
+          document.getElementById("busLabel").textContent = j.bus || "—";
+          document.getElementById("instanceLabel").textContent = j.instance_id || "—";
+          document.getElementById("authLabel").textContent = streamAuth ? "on" : "off";
+          if (streamAuth) {
+            tokenReq.textContent = "(required)";
+            authHint.className = "hint warn";
+            authHint.textContent =
+              "Stream auth is on. Mint a token with POST /v1/tokens, paste it here, then connect. A missing/bad token returns 401.";
           } else {
-            authHint.textContent = "Stream auth is off (dev mode). Token field is optional.";
+            tokenReq.textContent = "(optional)";
+            authHint.className = "hint";
+            authHint.textContent =
+              "Stream auth is off on this server. You can connect without a token.";
           }
         })
         .catch(() => {
-          authHint.textContent = "Could not read /healthz.";
+          document.getElementById("healthDot").className = "dot bad";
+          document.getElementById("healthLabel").textContent = "API unreachable";
+          authHint.className = "hint warn";
+          authHint.textContent = "Could not read /healthz. Is the relay running?";
         });
 
-      document.getElementById("connect").onclick = () => {
-        if (source) source.close();
-        const channel = encodeURIComponent(channelEl.value.trim() || "demo_user");
+      channelEl.addEventListener("input", () => {
+        updateCurl();
+        if (!connected) setStep(1);
+      });
+      tokenEl.addEventListener("input", updateCurl);
+      updateCurl();
+
+      connectBtn.onclick = () => {
+        closeSource();
+        sawEvent = false;
+        const channel = channelValue();
         const token = tokenEl.value.trim();
-        let url = "/v1/stream?channel=" + channel;
+        if (streamAuth && !token) {
+          setStreamState("error", "This server requires a stream token.");
+          log("err", "connect blocked: stream auth is on and token is empty");
+          return;
+        }
+        let url = "/v1/stream?channel=" + encodeURIComponent(channel);
         if (token) url += "&token=" + encodeURIComponent(token);
+        setStreamState("connecting");
+        log("sys", "connecting to channel “" + channel + "”");
         source = new EventSource(url);
-        statusEl.textContent = "Connecting " + channelEl.value.trim();
+        attachEventListeners(source);
         source.onopen = () => {
-          statusEl.textContent = "Streaming " + channelEl.value.trim();
-          log("connected");
+          setStreamState("connected");
+          log("ok", "connected");
         };
         source.onerror = () => {
-          statusEl.textContent = "Stream error / reconnecting (401 means token missing or bad)";
-        };
-        source.addEventListener("payment.updated", (ev) => {
-          log("payment.updated #" + ev.lastEventId + " " + ev.data);
-        });
-        source.onmessage = (ev) => {
-          log("message #" + ev.lastEventId + " " + ev.data);
+          if (!source || source.readyState === EventSource.CLOSED) {
+            setStreamState("error", "Connection closed. If auth is on, check the token.");
+            log("err", "stream closed (401 usually means token missing or invalid)");
+            closeSource();
+            disconnectBtn.disabled = true;
+            return;
+          }
+          setStreamState("error", "Connection issue — browser may retry automatically.");
         };
       };
 
-      document.getElementById("publish").onclick = async () => {
-        const channel = encodeURIComponent(channelEl.value.trim() || "demo_user");
+      disconnectBtn.onclick = () => {
+        closeSource();
+        setStreamState("idle", "Disconnected on purpose.");
+        log("sys", "disconnected");
+      };
+
+      publishBtn.onclick = async () => {
+        const channel = channelValue();
         const body = {
           type: "payment.updated",
           data: {
@@ -143,13 +852,40 @@
             at: new Date().toISOString(),
           },
         };
-        const res = await fetch("/v1/hooks/" + channel, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        });
-        const text = await res.text();
-        log("publish " + res.status + " " + text);
+        publishBtn.disabled = true;
+        try {
+          const res = await fetch("/v1/hooks/" + encodeURIComponent(channel), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+          const text = await res.text();
+          if (!res.ok) {
+            log("err", "publish " + res.status + " " + text);
+            if (res.status === 401) {
+              statusDetail.textContent =
+                "Publish rejected (HMAC). Local demo usually has HOOK_SECRET empty.";
+            }
+            return;
+          }
+          log("ok", "publish " + res.status + " " + text);
+          if (!connected) {
+            statusDetail.textContent =
+              "Published, but you are not connected — connect to see live events.";
+            setStep(2);
+          } else {
+            setStep(3);
+          }
+        } catch (err) {
+          log("err", "publish failed: " + (err && err.message ? err.message : err));
+        } finally {
+          publishBtn.disabled = false;
+        }
+      };
+
+      document.getElementById("clear").onclick = () => {
+        logEl.textContent = "";
+        logWrap.classList.remove("has-lines");
       };
     </script>
   </body>

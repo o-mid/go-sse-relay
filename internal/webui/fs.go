@@ -7,7 +7,7 @@ import (
 	"net/http"
 )
 
-//go:embed static/*
+//go:embed all:static
 var static embed.FS
 
 // Handler serves the embedded demo files.
