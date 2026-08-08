@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/o-mid/go-sse-relay/internal/buffer"
+	"github.com/o-mid/go-sse-relay/internal/channel"
 	"github.com/o-mid/go-sse-relay/internal/hub"
 )
 
@@ -22,9 +23,9 @@ func (h *StreamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	channel := strings.TrimSpace(r.URL.Query().Get("channel"))
-	if channel == "" {
-		http.Error(w, "channel required", http.StatusBadRequest)
+	ch := strings.TrimSpace(r.URL.Query().Get("channel"))
+	if !channel.Valid(ch) {
+		http.Error(w, "invalid channel", http.StatusBadRequest)
 		return
 	}
 	flusher, ok := w.(http.Flusher)
@@ -36,6 +37,7 @@ func (h *StreamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("X-Accel-Buffering", "no")
 	w.WriteHeader(http.StatusOK)
 	flusher.Flush()
 
@@ -43,12 +45,12 @@ func (h *StreamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if lastID == "" {
 		lastID = strings.TrimSpace(r.URL.Query().Get("lastEventId"))
 	}
-	for _, ev := range h.Ring.Since(channel, lastID) {
+	for _, ev := range h.Ring.Since(ch, lastID) {
 		writeSSE(w, ev)
 	}
 	flusher.Flush()
 
-	sub := h.Hub.Subscribe(channel, h.SubscriberBuf)
+	sub := h.Hub.Subscribe(ch, h.SubscriberBuf)
 	defer h.Hub.Unsubscribe(sub)
 
 	ctx := r.Context()
@@ -73,7 +75,14 @@ func (h *StreamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func writeSSE(w http.ResponseWriter, ev hub.Event) {
-	_, _ = fmt.Fprintf(w, "id: %s\n", ev.ID)
-	_, _ = fmt.Fprintf(w, "event: %s\n", ev.Type)
-	_, _ = fmt.Fprintf(w, "data: %s\n\n", string(ev.Data))
+	_, _ = fmt.Fprintf(w, "id: %s\n", sanitizeOneLine(ev.ID))
+	_, _ = fmt.Fprintf(w, "event: %s\n", sanitizeOneLine(ev.Type))
+	// One data line is enough for this relay; strip CR/LF from payloads.
+	_, _ = fmt.Fprintf(w, "data: %s\n\n", sanitizeOneLine(string(ev.Data)))
+}
+
+func sanitizeOneLine(s string) string {
+	s = strings.ReplaceAll(s, "\r", "")
+	s = strings.ReplaceAll(s, "\n", "")
+	return s
 }

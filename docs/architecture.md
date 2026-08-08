@@ -1,26 +1,49 @@
 # Architecture
 
-## Flow
+```
+                 POST /v1/hooks/{channel}
+                          |
+                          v
+                 +------------------+
+                 | HMAC (optional)  |
+                 +--------+---------+
+                          |
+                          v
+                 +------------------+     +----------------+
+                 | assign id        |---->| ring buffer    |
+                 | hub.Publish      |     | (replay)       |
+                 +--------+---------+     +--------+-------+
+                          |                        |
+                          | live                   | on connect
+                          v                        v
+                 +------------------+     GET /v1/stream
+                 | subscribers SSE  |<----------------
+                 +------------------+
+```
 
-1. A producer `POST`s JSON to `/v1/hooks/{channel}` (optional HMAC).
-2. The relay assigns an event id, stores a short replay window, and publishes to the in-memory hub.
-3. Browsers or apps connected to `GET /v1/stream?channel=...` receive Server-Sent Events.
-4. On reconnect, clients send `Last-Event-ID` and receive buffered events they missed (within capacity).
-
-## Process map
+## Capability map
 
 | Capability | Path |
 | --- | --- |
-| Channel fan-out | `internal/hub` |
-| Reconnect replay buffer | `internal/buffer` |
-| Optional ingest HMAC | `internal/auth` |
-| HTTP ingest | `internal/api/hooks.go` |
-| SSE stream | `internal/api/stream.go` |
-| Process wiring | `cmd/relay` |
-| Browser demo | `web/index.html` |
+| Channel name rules | `internal/channel` |
+| Fan-out hub | `internal/hub` |
+| Replay ring buffer | `internal/buffer` |
+| HMAC verify | `internal/auth` |
+| Hook HTTP | `internal/api/hooks.go` |
+| SSE HTTP | `internal/api/stream.go` |
+| Embedded demo UI | `internal/webui` |
+| Process entrypoint | `cmd/relay` |
+
+## Process notes
+
+- Single binary. The demo UI is embedded, so the working directory does not matter.
+- Hub and ring live in memory. Restart clears subscribers and replay.
+- Publish never blocks on a slow subscriber; that subscriber may miss events if its buffer is full.
+- Good fit behind one instance or as a local/dev relay. Multi-node needs a shared bus (later work).
 
 ## Non-goals (v0.1)
 
-- Multi-node clustering / Redis bus
+- Multi-node clustering
 - Persistent event store
-- Authentication for stream subscribers beyond channel name
+- Stream authentication beyond knowing the channel name
+- Outbound webhook delivery retries

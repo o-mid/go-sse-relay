@@ -29,6 +29,17 @@ func TestHealthz(t *testing.T) {
 	}
 }
 
+func TestHookRejectsBadChannel(t *testing.T) {
+	mux := newTestMux("")
+	body := []byte(`{"type":"x","data":{}}`)
+	req := httptest.NewRequest(http.MethodPost, "/v1/hooks/bad%20name", bytes.NewReader(body))
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d want 400", rec.Code)
+	}
+}
+
 func TestHookRequiresValidSignatureWhenSecretSet(t *testing.T) {
 	mux := newTestMux("topsecret")
 	body := []byte(`{"type":"payment.updated","data":{"status":"settled"}}`)

@@ -8,6 +8,7 @@ import (
 
 	"github.com/o-mid/go-sse-relay/internal/auth"
 	"github.com/o-mid/go-sse-relay/internal/buffer"
+	"github.com/o-mid/go-sse-relay/internal/channel"
 	"github.com/o-mid/go-sse-relay/internal/hub"
 )
 
@@ -28,9 +29,9 @@ func (h *HookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	channel := strings.TrimSpace(r.PathValue("channel"))
-	if channel == "" {
-		http.Error(w, "channel required", http.StatusBadRequest)
+	ch := strings.TrimSpace(r.PathValue("channel"))
+	if !channel.Valid(ch) {
+		http.Error(w, "invalid channel", http.StatusBadRequest)
 		return
 	}
 	body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
@@ -62,7 +63,7 @@ func (h *HookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	published, delivered := h.Hub.Publish(hub.Event{
-		Channel: channel,
+		Channel: ch,
 		Type:    env.Type,
 		Data:    append([]byte(nil), data...),
 	})
